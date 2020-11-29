@@ -5,6 +5,7 @@ fn main()
 {
   println!("cargo:rustc-env=PYTHONDONTWRITEBYTECODE=1");
   let dst = Config::new("lib/qpid-proton-0.33.0")
+    .env("PYTHONDONTWRITEBYTECODE","1")
     .define("BUILD_CPP","OFF")
     .define("BUILD_GO","OFF")
     .define("BUILD_PYTHON","OFF")
