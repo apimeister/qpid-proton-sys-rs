@@ -1,0 +1,17 @@
+[package]
+name = "qpid_proton-sys"
+version = "0.0.1"
+authors = ["Jens Walter <jens@apimeister.com>"]
+edition = "2018"
+license = "Apache-2.0"
+keywords = ["amqp","qpid","proton","eventhub","servicebus"]
+repository = "https://github.com/apimeister/qpid-proton-sys-rs/"
+description = "Rust bindings for the Apache Qpid Proton C library."
+
+[lib]
+name = "qpid_proton_sys"
+
+[dependencies]
+
+[build-dependencies]
+cmake = "0.1"
