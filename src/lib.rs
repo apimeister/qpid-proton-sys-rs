@@ -124,7 +124,9 @@ extern "C" {
   pub fn pn_proactor_done(proactor: *mut pn_proactor_t, events: *mut pn_event_batch_t);
   pub fn pn_proactor_free(proactor: *mut pn_proactor_t);
   pub fn pn_proactor_wait(proactor: *mut pn_proactor_t) -> *mut pn_event_batch_t;
-
+  /// Construct a new receiver on a session.
+  /// Each receiving link between two AMQP containers must be uniquely named. Note that this uniqueness cannot be enforced at the API level, so some consideration should be taken in choosing link names.
+  pub fn pn_receiver(session: *mut pn_session_t,name: *const c_char) -> *mut pn_link_t;
   pub fn pn_sasl(transport: *mut pn_transport_t) -> *mut pn_sasl_t;
   pub fn pn_sasl_allowed_mechs(sasl: *mut pn_sasl_t,mechs: *const c_char);
   pub fn pn_sasl_set_allow_insecure_mechs(sasl: *mut pn_sasl_t,insecure: bool);
