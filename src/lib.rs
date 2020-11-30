@@ -28,6 +28,14 @@ extern "C" {
   pub fn pn_data_exit(data: *mut pn_data_t) -> bool;
 
   pub fn pn_delivery(link: *mut pn_link_t,tag: pn_delivery_tag_t) -> *mut pn_delivery_t;
+  /// Get the parent link for a delivery object.
+  pub fn pn_delivery_link(delivery: *mut pn_delivery_t) -> *mut pn_link_t;
+  /// Get the amount of pending message data for a delivery.
+  pub fn pn_delivery_pending(delivery: *mut pn_delivery_t) -> usize;
+
+  /// Check if a delivery is readable.
+  /// A delivery is considered readable if it is the current delivery on an incoming link.
+  pub fn pn_delivery_readable(delivery: *mut pn_delivery_t) -> bool;
   pub fn pn_delivery_remote_state(delivery: *mut pn_delivery_t) -> u64;
 
   pub fn pn_dtag(bytes: *const c_char,size: usize) -> pn_delivery_tag_t;
@@ -58,6 +66,11 @@ extern "C" {
   /// Open a link.
   /// Once this operation has completed, the PN_LOCAL_ACTIVE state flag will be set.
   pub fn pn_link_open(link: *mut pn_link_t);
+  /// Receive message data for the current delivery on a link.
+  /// Use pn_delivery_pending on the current delivery to figure out how much buffer space is needed.
+  /// Note that the link API can be used to stream large messages across the network, so just because there is no data to read does not imply the message is complete. To ensure the entirety of the message data has been read, either invoke pn_link_recv until PN_EOS is returned, or verify that
+  /// (!pn_delivery_partial(d) && !pn_delivery_aborted(d) && pn_delivery_pending(d)==0)
+  pub fn pn_link_recv(receiver: *mut pn_link_t, bytes: *const c_char, n: usize)-> usize;
   /// Send message data for the current delivery on a link.
   pub fn pn_link_send(sender: *mut pn_link_t,bytes: *const c_char,n: usize) -> usize;
   /// Access the locally defined target definition for a link.
@@ -74,6 +87,9 @@ extern "C" {
   /// Clears the content of a pn_message_t.
   /// When pn_message_clear returns, the supplied pn_message_t will be emptied of all content and effectively returned to the same state as if it was just created.
   pub fn pn_message_clear(msg: *mut pn_message_t);
+  /// Decode/load message content from AMQP formatted binary data.
+  /// Upon invoking this operation, any existing message content will be cleared and replaced with the content from the provided binary data.
+  pub fn pn_message_decode(msg: *mut pn_message_t,bytes: *const c_char,size: usize) -> i32;
   /// Encode a message as AMQP formatted binary data.
   /// If the buffer space provided is insufficient to store the content held in the message, the operation will fail and return a PN_OVERFLOW error code.
   pub fn pn_message_encode(msg: *mut pn_message_t,bytes: *const c_char,size: *mut usize) -> i64;
