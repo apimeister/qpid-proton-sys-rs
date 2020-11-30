@@ -79,6 +79,9 @@ extern "C" {
   pub fn pn_link_recv(receiver: *mut pn_link_t, bytes: *const c_char, n: usize)-> usize;
   /// Send message data for the current delivery on a link.
   pub fn pn_link_send(sender: *mut pn_link_t,bytes: *const c_char,n: usize) -> usize;
+  /// Access the locally defined source definition for a link.
+  /// The pointer returned by this operation is valid until the link object is freed.
+  pub fn pn_link_source(link: *mut pn_link_t) -> *mut pn_terminus_t;
   /// Access the locally defined target definition for a link.
   /// The pointer returned by this operation is valid until the link object is freed.
   pub fn pn_link_target(link: *mut pn_link_t) -> *mut pn_terminus_t;
@@ -116,18 +119,32 @@ extern "C" {
   /// Create a proactor.
   /// Must be freed with pn_proactor_free()
   pub fn pn_proactor() -> *mut pn_proactor_t;
+  /// Format a host:port address string for pn_proactor_connect() or pn_proactor_listen()
   pub fn pn_proactor_addr(addr: *mut c_char, size: usize, host: *const c_char, port: *const c_char ) -> i64;
   /// Free the proactor.
   /// Abort open connections/listeners, clean up all resources.
   pub fn pn_proactor_connect2	(proactor: *mut pn_proactor_t,connection: *mut pn_connection_t,
     transport: *mut pn_transport_t,addr: *const c_char);
+  /// Call when finished handling a batch of events.
+  /// Must be called exactly once to match each call to pn_proactor_wait().
   pub fn pn_proactor_done(proactor: *mut pn_proactor_t, events: *mut pn_event_batch_t);
+  /// Free the proactor.
+  /// Abort open connections/listeners, clean up all resources.
   pub fn pn_proactor_free(proactor: *mut pn_proactor_t);
+  /// Wait until there are Proactor events to handle.
+  /// You must call pn_proactor_done() when you are finished with the batch, you must not use the batch pointer after calling pn_proactor_done().
+  /// Normally it is most efficient to handle the entire batch in the calling thread and then call pn_proactor_done(), but see pn_proactor_done() for more options.
+  /// pn_proactor_get() is a non-blocking version of this call.
   pub fn pn_proactor_wait(proactor: *mut pn_proactor_t) -> *mut pn_event_batch_t;
   /// Construct a new receiver on a session.
   /// Each receiving link between two AMQP containers must be uniquely named. Note that this uniqueness cannot be enforced at the API level, so some consideration should be taken in choosing link names.
   pub fn pn_receiver(session: *mut pn_session_t,name: *const c_char) -> *mut pn_link_t;
+  /// Construct an Authentication and Security Layer object.
+  /// This will return the SASL layer object for the supplied transport object. If there is currently no SASL layer one will be created.
+  /// On the client side of an AMQP connection this will have the effect of ensuring that the AMQP SASL layer is used for that connection.
   pub fn pn_sasl(transport: *mut pn_transport_t) -> *mut pn_sasl_t;
+  /// SASL mechanisms that are to be considered for authentication.
+  /// This can be used on either the client or the server to restrict the SASL mechanisms that may be used to the mechanisms on the list.
   pub fn pn_sasl_allowed_mechs(sasl: *mut pn_sasl_t,mechs: *const c_char);
   pub fn pn_sasl_set_allow_insecure_mechs(sasl: *mut pn_sasl_t,insecure: bool);
 
@@ -143,6 +160,10 @@ extern "C" {
   /// Open a session.
   /// Once this operation has completed, the PN_LOCAL_ACTIVE state flag will be set.
   pub fn pn_session_open(session: *mut pn_session_t);
+  /// Boolean to allow use of clear text authentication mechanisms.
+  /// By default the SASL layer is configured not to allow mechanisms that disclose the clear text of the password over an unencrypted AMQP connection. This specifically will disallow the use of the PLAIN mechanism without using SSL encryption.
+  /// This default is to avoid disclosing password information accidentally over an insecure network.
+  /// If you actually wish to use a clear text password unencrypted then you can use this API to set allow_insecure_mechs to true.
   pub fn pn_session_remote_condition(session: *mut pn_session_t) -> *mut pn_condition_t;
 
   pub fn pn_sender(session: *mut pn_session_t, name: *const c_char) -> *mut pn_link_t;
