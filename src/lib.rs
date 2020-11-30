@@ -32,6 +32,12 @@ extern "C" {
   pub fn pn_delivery_link(delivery: *mut pn_delivery_t) -> *mut pn_link_t;
   /// Get the amount of pending message data for a delivery.
   pub fn pn_delivery_pending(delivery: *mut pn_delivery_t) -> usize;
+  /// Update the disposition of a delivery.
+  /// When update is invoked the updated disposition of the delivery will be communicated to the peer.
+  pub fn pn_delivery_update(delivery: *mut pn_delivery_t, state: u64);
+  /// Settle a delivery.
+  /// A settled delivery can never be used again.
+  pub fn pn_delivery_settle(delivery: *mut pn_delivery_t);
 
   /// Check if a delivery is readable.
   /// A delivery is considered readable if it is the current delivery on an incoming link.
