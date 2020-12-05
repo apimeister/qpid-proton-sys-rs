@@ -21,11 +21,13 @@ extern "C" {
   pub fn pn_connection_set_password(connection: *mut pn_connection_t,password: *const c_char);
   pub fn pn_connection_set_user(connection: *mut pn_connection_t,user: *const c_char);
 
-  pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i64;
   pub fn pn_data_enter(data: *mut pn_data_t) -> bool;
-  pub fn pn_data_put_map(data: *mut pn_data_t) -> i64;
-  pub fn pn_data_put_string(data: *mut pn_data_t,string: *mut pn_bytes_t) -> i64;
   pub fn pn_data_exit(data: *mut pn_data_t) -> bool;
+  pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i64;
+  pub fn pn_data_put_map(data: *mut pn_data_t) -> i64;
+  /// Puts a PN_STRING value.
+  /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
+  pub fn pn_data_put_string(data: *mut pn_data_t,string: *mut pn_bytes_t) -> i64;
 
   pub fn pn_delivery(link: *mut pn_link_t,tag: pn_delivery_tag_t) -> *mut pn_delivery_t;
   /// Get the parent link for a delivery object.
@@ -38,7 +40,6 @@ extern "C" {
   /// Settle a delivery.
   /// A settled delivery can never be used again.
   pub fn pn_delivery_settle(delivery: *mut pn_delivery_t);
-
   /// Check if a delivery is readable.
   /// A delivery is considered readable if it is the current delivery on an incoming link.
   pub fn pn_delivery_readable(delivery: *mut pn_delivery_t) -> bool;
@@ -85,8 +86,12 @@ extern "C" {
   /// Access the locally defined target definition for a link.
   /// The pointer returned by this operation is valid until the link object is freed.
   pub fn pn_link_target(link: *mut pn_link_t) -> *mut pn_terminus_t;
+  /// Set a logger's tracing flags.
+  /// Set individual trace flags to control what a logger logs.
+  /// The trace flags for a logger control what sort of information is logged. See pn_log_level_t and pn_log_subsystem_t for more details.
+  /// Note that log messages with a level of PN_LEVEL_CRITICAL will always be logged. Otherwise log message are only logged if the subsystem and level flags both match a flag in the masks held by the logger.
+  /// If you don't want to affect the subsystem flags then you can set subsystem to PN_SUBSYSTEM_NONE. likewise level to PN_LEVEL_NONE if you don't want to affect the level flags.
   pub fn pn_logger_set_mask(logger: *mut pn_logger_t,subsystem: pn_log_subsystem_t, level: pn_log_level_t);
-
   /// Construct a new pn_message_t.
   /// Every message that is constructed must be freed using pn_message_free().
   pub fn pn_message()	-> *mut pn_message_t;
@@ -116,6 +121,35 @@ extern "C" {
   /// call pn_link_advance() to indicate the message is complete
   /// Note: you must create a delivery for the message before calling pn_message_send() see pn_delivery()
   pub fn pn_message_send(msg: *mut pn_message_t,sender: *mut pn_link_t,buf: *mut pn_rwbytes_t) -> i64;
+  /// Set the content_type for a message.
+  /// The supplied content_type pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the content_type is set to NULL. When the pointer is non NULL, the contents are copied into the message.
+  pub fn pn_message_set_content_type(msg: *mut pn_message_t, param_type: *const c_char) -> i32;
+  /// Construct a new pn_messenger_t with the given name.
+  /// The name is global. If a NULL name is supplied, a UUID based name will be chosen.
+  pub fn pn_messenger(name: *const c_char) -> *mut pn_messenger_t;
+  /// Frees a Messenger.
+  pub fn pn_messenger_free(messenger: *mut pn_messenger_t);
+  /// Get the next message from the head of a messenger's incoming queue.
+  /// The get operation copies the message data from the head of the messenger's incoming queue into the provided pn_message_t object. If provided pn_message_t pointer is NULL, the head message will be discarded. This operation will return PN_EOS if there are no messages left on the incoming queue.
+  pub fn pn_messenger_get(messenger: *mut pn_messenger_t, message: *mut pn_message_t) -> i32;
+  /// Puts a message onto the messenger's outgoing queue.
+  /// The message may also be sent if transmission would not cause blocking. This call will not block.
+  pub fn pn_messenger_put(messenger: *mut pn_messenger_t, msg: *mut pn_message_t) -> i32;
+  /// Retrieve messages into a messenger's incoming queue.
+  /// Instructs a messenger to receive up to limit messages into the incoming message queue of a messenger. If limit is -1, the messenger will receive as many messages as it can buffer internally. If the messenger is in blocking mode, this call will block until at least one message is available in the incoming queue.
+  /// Each call to pn_messenger_recv replaces the previous receive operation, so pn_messenger_recv(messenger, 0) will cancel any outstanding receive.
+  /// After receiving messages onto your incoming queue use pn_messenger_get() to access message content.
+  pub fn pn_messenger_recv(messenger: *mut pn_messenger_t, limit: i32) -> i32;
+  /// Send messages from a messenger's outgoing queue.
+  /// If a messenger is in blocking mode (see pn_messenger_is_blocking()), this operation will block until N messages have been sent from the outgoing queue. A value of -1 for N means "all messages in the outgoing queue". See below for a full definition of what sent from the outgoing queue means.
+  /// Any blocking will end once the messenger's configured timeout (if any) has been reached. When this happens an error code of PN_TIMEOUT is returned.
+  /// If the messenger is in non blocking mode, this call will return an error code of PN_INPROGRESS if it is unable to send the requested number of messages without blocking.
+  /// A message is considered to be sent from the outgoing queue when its status has been fully determined. This does not necessarily mean the message was successfully sent to the final recipient though, for example of the receiver rejects the message, the final status will be PN_STATUS_REJECTED. Similarly, if a message is sent to an invalid address, it may be removed from the outgoing queue without ever even being transmitted. In this case the final status will be PN_STATUS_ABORTED.
+  pub fn pn_messenger_send(messenger: *mut pn_messenger_t, n: i32) -> i32;
+  /// Sets control flags to enable additional function for the Messenger.
+  pub fn pn_messenger_set_flags(messenger: *mut pn_messenger_t,flags: i32) -> i32;
+  /// Subscribes a messenger to messages from the specified source.
+  pub fn pn_messenger_subscribe(messenger: *mut pn_messenger_t,source: *const c_char) -> *mut pn_subscription_t;
   /// Create a proactor.
   /// Must be freed with pn_proactor_free()
   pub fn pn_proactor() -> *mut pn_proactor_t;
@@ -146,8 +180,11 @@ extern "C" {
   /// SASL mechanisms that are to be considered for authentication.
   /// This can be used on either the client or the server to restrict the SASL mechanisms that may be used to the mechanisms on the list.
   pub fn pn_sasl_allowed_mechs(sasl: *mut pn_sasl_t,mechs: *const c_char);
+  /// Boolean to allow use of clear text authentication mechanisms.
+  /// By default the SASL layer is configured not to allow mechanisms that disclose the clear text of the password over an unencrypted AMQP connection. This specifically will disallow the use of the PLAIN mechanism without using SSL encryption.
+  /// This default is to avoid disclosing password information accidentally over an insecure network.
+  /// If you actually wish to use a clear text password unencrypted then you can use this API to set allow_insecure_mechs to true.
   pub fn pn_sasl_set_allow_insecure_mechs(sasl: *mut pn_sasl_t,insecure: bool);
-
   /// Factory for creating a new session on a given connection object.
   /// Creates a new session object and adds it to the set of sessions maintained by the connection object.
   pub fn pn_session(connection: *mut pn_connection_t) -> *mut pn_session_t;
@@ -165,57 +202,68 @@ extern "C" {
   /// This default is to avoid disclosing password information accidentally over an insecure network.
   /// If you actually wish to use a clear text password unencrypted then you can use this API to set allow_insecure_mechs to true.
   pub fn pn_session_remote_condition(session: *mut pn_session_t) -> *mut pn_condition_t;
-
+  /// Construct a new sender on a session.
+  /// Each sending link between two AMQP containers must be uniquely named. Note that this uniqueness cannot be enforced at the API level, so some consideration should be taken in choosing link names.
   pub fn pn_sender(session: *mut pn_session_t, name: *const c_char) -> *mut pn_link_t;
+  /// Create a new SSL session object associated with a transport.
+  /// A transport must have an SSL object in order to "speak" SSL over its connection. This method allocates an SSL object associates it with the transport.
   pub fn pn_ssl(transport: *mut pn_transport_t) -> *mut pn_ssl_t;
+  /// Create an SSL configuration domain.
+  /// This method allocates an SSL domain object. This object is used to hold the SSL configuration for one or more SSL sessions. The SSL session object (pn_ssl_t) is allocated from this object.
   pub fn pn_ssl_domain(mode: pn_ssl_mode_t) -> *mut pn_ssl_domain_t;
+  /// Get the subject from the peers certificate.
   pub fn pn_ssl_get_remote_subject(ssl: *mut pn_ssl_t) -> *const c_char;
+  /// Initialize an SSL session.
+  /// This method configures an SSL object with defaults or the configuration provided by the given domain.
   pub fn pn_ssl_init(ssl: *mut pn_ssl_t,domain: *mut pn_ssl_domain_t,session_id: *const c_char) -> i64;
+  /// Set the expected identity of the remote peer.
+  /// By default, SSL will use the hostname associated with the connection that the transport is bound to (see pn_connection_set_hostname). This method allows the caller to override that default.
+  /// The hostname is used for two purposes: 1) when set on an SSL client, it is sent to the server during the handshake (if Server Name Indication is supported), and 2) it is used to check against the identifying name provided in the peer's certificate. If the supplied name does not exactly match a SubjectAltName (type DNS name), or the CommonName entry in the peer's certificate, the peer is considered unauthenticated (potential imposter), and the SSL connection is aborted.
   pub fn pn_ssl_set_peer_hostname(ssl: *mut pn_ssl_t,hostname: *const c_char) -> i64;
-
+  /// Set the address of a terminus object.
   pub fn pn_terminus_set_address(terminus: *mut pn_terminus_t, address: *const c_char) -> i64;
-
+  /// Get additional information about the condition of the transport.
+  /// When a PN_TRANSPORT_ERROR event occurs, this operation can be used to access the details of the error condition.
+  /// The pointer returned by this operation is valid until the transport object is freed.
   pub fn pn_transport_condition(transport: *mut pn_transport_t) -> *mut pn_condition_t;
+  /// Factory for creating a transport.
+  /// A transport is used by a connection to interface with the network. There can only be one connection associated with a transport.
+  /// Initially a transport is configured to be a client transport. Use pn_transport_set_server() to configure the transport as a server transport.
+  /// A client transport initiates outgoing connections.
+  /// A client transport must be configured with the protocol layers to use and cannot configure itself automatically.
+  /// A server transport accepts incoming connections. It can automatically configure itself to include the various protocol layers depending on the incoming protocol headers.
   pub fn pn_transport() -> *mut pn_transport_t;
+  /// Set whether a non-authenticated transport connection is allowed.
+  /// There are several ways within the AMQP protocol suite to get unauthenticated connections:
+  /// Use no SASL layer (with either no TLS or TLS without client certificates)
+  /// Use a SASL layer but the ANONYMOUS mechanism
+  /// The default if this option is not set is to allow unauthenticated connections.
   pub fn pn_transport_require_auth(transport: *mut pn_transport_t,required: bool);
+  /// Set whether a non encrypted transport connection is allowed.
+  /// There are several ways within the AMQP protocol suite to get encrypted connections:
+  /// Use TLS
+  /// Use a SASL with a mechanism that supports security layers
+  /// The default if this option is not set is to allow unencrypted connections.
   pub fn pn_transport_require_encryption(transport: *mut pn_transport_t,required: bool);
+  /// Get the transport logger.
+  /// This can be used to control the logging information emitted by the transport
+  /// The pointer returned by this operation is valid until the transport object is freed.
   pub fn pn_transport_logger(transport: *mut pn_transport_t) -> *mut pn_logger_t;
 }
 
 
 #[allow(dead_code)]
 #[repr(C)]
-pub struct pn_proactor_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_message_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_connection_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_transport_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_event_batch_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_event_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_session_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_link_t { pub _val: [u8; 0] }
-#[allow(dead_code)]
-#[repr(C)]
-pub struct pn_terminus_t { pub _val: [u8; 0] }
+pub struct pn_bytes_t { pub size: usize, pub start: *const c_char }
 #[allow(dead_code)]
 #[repr(C)]
 pub struct pn_condition_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
-pub struct pn_sasl_t { pub _val: [u8; 0] }
+pub struct pn_connection_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_data_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
 pub struct pn_delivery_tag_t { pub _val: [u8; 0] }
@@ -227,13 +275,34 @@ pub struct pn_delivery_t { pub _val: [u8; 0] }
 pub struct pn_error_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
-pub struct pn_data_t { pub _val: [u8; 0] }
+pub struct pn_event_batch_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
-pub struct pn_bytes_t { pub size: usize, pub start: *const c_char }
+pub struct pn_event_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_link_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_logger_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_message_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_messenger_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_proactor_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
 pub struct pn_rwbytes_t { pub size: usize, pub start: *mut c_char }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_sasl_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_session_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
 pub struct pn_ssl_t { pub _val: [u8; 0] }
@@ -242,7 +311,14 @@ pub struct pn_ssl_t { pub _val: [u8; 0] }
 pub struct pn_ssl_domain_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
-pub struct pn_logger_t { pub _val: [u8; 0] }
+pub struct pn_subscription_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_terminus_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_transport_t { pub _val: [u8; 0] }
+
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
