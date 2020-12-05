@@ -23,6 +23,9 @@ extern "C" {
 
   pub fn pn_data_enter(data: *mut pn_data_t) -> bool;
   pub fn pn_data_exit(data: *mut pn_data_t) -> bool;
+  /// Puts a PN_BINARY value.
+  /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
+  pub fn pn_data_put_binary(data: *mut pn_data_t,bytes: *mut pn_bytes_t) -> i32;
   pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i64;
   pub fn pn_data_put_map(data: *mut pn_data_t) -> i64;
   /// Puts a PN_STRING value.
@@ -121,17 +124,31 @@ extern "C" {
   /// call pn_link_advance() to indicate the message is complete
   /// Note: you must create a delivery for the message before calling pn_message_send() see pn_delivery()
   pub fn pn_message_send(msg: *mut pn_message_t,sender: *mut pn_link_t,buf: *mut pn_rwbytes_t) -> i64;
+  /// Set the address for a message.
+  /// The supplied address pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the address of the message is set to NULL. When the pointer is non NULL, the contents are copied into the message.
+  pub fn pn_message_set_address(msg: *mut pn_message_t, address: *const c_char) -> i32;
   /// Set the content_type for a message.
   /// The supplied content_type pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the content_type is set to NULL. When the pointer is non NULL, the contents are copied into the message.
   pub fn pn_message_set_content_type(msg: *mut pn_message_t, param_type: *const c_char) -> i32;
+  /// Set the inferred flag for a message.
+  /// See pn_message_is_inferred() for a description of what the inferred flag is.
+  pub fn pn_message_set_inferred(msg: *mut pn_message_t, inferred: bool) -> i32;
+  /// Set the size of a messenger's outgoing window.
+  /// See pn_messenger_get_outgoing_window() for details.
+  pub fn pn_messenger_set_outgoing_window(messenger: *mut pn_messenger_t, window: i32) -> i32;
   /// Construct a new pn_messenger_t with the given name.
   /// The name is global. If a NULL name is supplied, a UUID based name will be chosen.
   pub fn pn_messenger(name: *const c_char) -> *mut pn_messenger_t;
+  /// Get the code for a messenger's most recent error.
+  /// The error code is initialized to zero at messenger creation. The error number is "sticky" i.e. error codes are not reset to 0 at the end of successful API calls. You can use pn_messenger_error to access the messenger's error object and clear explicitly if desired.
+  pub fn pn_messenger_errno(messenger: *mut pn_messenger_t) -> i32;  
   /// Frees a Messenger.
   pub fn pn_messenger_free(messenger: *mut pn_messenger_t);
   /// Get the next message from the head of a messenger's incoming queue.
   /// The get operation copies the message data from the head of the messenger's incoming queue into the provided pn_message_t object. If provided pn_message_t pointer is NULL, the head message will be discarded. This operation will return PN_EOS if there are no messages left on the incoming queue.
   pub fn pn_messenger_get(messenger: *mut pn_messenger_t, message: *mut pn_message_t) -> i32;
+  /// Check if a messenger is in blocking mode.
+  pub fn pn_messenger_is_blocking(messenger: *mut pn_messenger_t) -> bool;
   /// Puts a message onto the messenger's outgoing queue.
   /// The message may also be sent if transmission would not cause blocking. This call will not block.
   pub fn pn_messenger_put(messenger: *mut pn_messenger_t, msg: *mut pn_message_t) -> i32;
@@ -146,10 +163,20 @@ extern "C" {
   /// If the messenger is in non blocking mode, this call will return an error code of PN_INPROGRESS if it is unable to send the requested number of messages without blocking.
   /// A message is considered to be sent from the outgoing queue when its status has been fully determined. This does not necessarily mean the message was successfully sent to the final recipient though, for example of the receiver rejects the message, the final status will be PN_STATUS_REJECTED. Similarly, if a message is sent to an invalid address, it may be removed from the outgoing queue without ever even being transmitted. In this case the final status will be PN_STATUS_ABORTED.
   pub fn pn_messenger_send(messenger: *mut pn_messenger_t, n: i32) -> i32;
+  /// Enable or disable blocking behavior for a messenger during calls to pn_messenger_send and pn_messenger_recv.
+  pub fn pn_messenger_set_blocking(messenger: *mut pn_messenger_t, blocking: bool) -> i32;
   /// Sets control flags to enable additional function for the Messenger.
-  pub fn pn_messenger_set_flags(messenger: *mut pn_messenger_t,flags: i32) -> i32;
+  pub fn pn_messenger_set_flags(messenger: *mut pn_messenger_t, flags: i32) -> i32;
+  /// Set the tracer associated with a messenger.
+  pub fn pn_messenger_set_tracer(messenger: *mut pn_messenger_t, tracer: i32);
+  /// Currently a no-op placeholder.
+  /// For future compatibility, do not send or receive messages before starting the messenger.
+  pub fn pn_messenger_start(messenger: *mut pn_messenger_t) -> i32;
+  /// Stops a messenger.
+  /// Stopping a messenger will perform an orderly shutdown of all underlying connections. This may require some time. If the messenger is in non blocking mode (see pn_messenger_is_blocking), this operation will return PN_INPROGRESS if it cannot finish immediately. In that case, you can use pn_messenger_stopped() to determine when the messenger has finished stopping.
+  pub fn pn_messenger_stop(messenger: *mut pn_messenger_t) -> i32;
   /// Subscribes a messenger to messages from the specified source.
-  pub fn pn_messenger_subscribe(messenger: *mut pn_messenger_t,source: *const c_char) -> *mut pn_subscription_t;
+  pub fn pn_messenger_subscribe(messenger: *mut pn_messenger_t, source: *const c_char) -> *mut pn_subscription_t;
   /// Create a proactor.
   /// Must be freed with pn_proactor_free()
   pub fn pn_proactor() -> *mut pn_proactor_t;
