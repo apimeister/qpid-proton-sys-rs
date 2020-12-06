@@ -20,14 +20,27 @@ extern "C" {
   pub fn pn_connection_set_hostname(connection: *mut pn_connection_t, hostname: *const c_char);
   pub fn pn_connection_set_password(connection: *mut pn_connection_t,password: *const c_char);
   pub fn pn_connection_set_user(connection: *mut pn_connection_t,user: *const c_char);
-
+  /// Writes the contents of a data object to the given buffer as an AMQP data stream.
+  pub fn pn_data_encode(data: *mut pn_data_t, bytes: *const c_char, size: usize) -> usize;
   pub fn pn_data_enter(data: *mut pn_data_t) -> bool;
   pub fn pn_data_exit(data: *mut pn_data_t) -> bool;
+  /// Puts an empty array value into a pn_data_t.
+  /// Elements may be filled by entering the array node and putting the element values. The values must all be of the specified array element type. If an array is described then the first child value of the array is the descriptor and may be of any type.
+  pub fn pn_data_put_array(data: *mut pn_data_t, described: bool, param_type: pn_type_t) -> i32;
   /// Puts a PN_BINARY value.
   /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
   pub fn pn_data_put_binary(data: *mut pn_data_t,bytes: *mut pn_bytes_t) -> i32;
-  pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i64;
+  /// Puts a PN_CHAR value.
+  pub fn pn_data_put_char(data: *mut pn_data_t,c: u32) -> i32;
+  pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i32;
   pub fn pn_data_put_map(data: *mut pn_data_t) -> i64;
+  /// Advances the current node to its next sibling and returns true.
+  /// If there is no next sibling the current node remains unchanged and false is returned.
+  pub fn pn_data_next(data: *mut pn_data_t) -> bool;
+  /// Moves the current node to its previous sibling and returns true.
+  /// If there is no previous sibling the current node remains unchanged and false is returned.
+  pub fn pn_data_prev(data: *mut pn_data_t) -> bool;
+
   /// Puts a PN_STRING value.
   /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
   pub fn pn_data_put_string(data: *mut pn_data_t,string: *mut pn_bytes_t) -> i64;
@@ -816,4 +829,64 @@ pub enum pn_status_t {
   PN_STATUS_ABORTED = 6,
   /// The remote party has settled the message.
   PN_STATUS_SETTLED = 7
+}
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+#[repr(C)]
+/// Identifies an AMQP type.
+pub enum pn_type_t {
+  /// The NULL AMQP type.
+  PN_NULL = 1,
+  /// The boolean AMQP type.
+  PN_BOOL = 2,
+  /// The unsigned byte AMQP type. An 8 bit unsigned integer.
+  PN_UBYTE = 3,
+  /// The byte AMQP type. An 8 bit signed integer.
+  PN_BYTE = 4,
+  /// The unsigned short AMQP type. A 16 bit unsigned integer.
+  PN_USHORT = 5,
+  /// The short AMQP type. A 16 bit signed integer.
+  PN_SHORT = 6,
+  /// The unsigned int AMQP type. A 32 bit unsigned integer.
+  PN_UINT = 7,
+  /// The signed int AMQP type. A 32 bit signed integer.
+  PN_INT = 8,
+  /// The char AMQP type. A 32 bit unicode character.
+  PN_CHAR = 9,
+  /// The ulong AMQP type. An unsigned 64 bit integer.
+  PN_ULONG = 10,
+  /// The long AMQP type. A signed 64 bit integer.
+  PN_LONG = 11,
+  /// The timestamp AMQP type. A signed 64 bit value measuring milliseconds since the epoch.
+  PN_TIMESTAMP = 12,
+  /// The float AMQP type. A 32 bit floating point value.
+  PN_FLOAT = 13,
+  /// The double AMQP type. A 64 bit floating point value.
+  PN_DOUBLE = 14,
+  /// The decimal32 AMQP type. A 32 bit decimal floating point value.
+  PN_DECIMAL32 = 15,
+  /// The decimal64 AMQP type. A 64 bit decimal floating point value.
+  PN_DECIMAL64 = 16,
+  /// The decimal128 AMQP type. A 128 bit decimal floating point value.
+  PN_DECIMAL128 = 17,
+  /// The UUID AMQP type. A 16 byte UUID.
+  PN_UUID = 18,
+  /// The binary AMQP type. A variable length sequence of bytes.
+  PN_BINARY = 19,
+  /// The string AMQP type. A variable length sequence of unicode characters.
+  PN_STRING = 20,
+  /// The symbol AMQP type. A variable length sequence of unicode characters.
+  PN_SYMBOL = 21,
+  /// A described AMQP type.
+  PN_DESCRIBED = 22,
+  /// An AMQP array. A monomorphic sequence of other AMQP values.
+  PN_ARRAY = 23,
+  ///  An AMQP list. A polymorphic sequence of other AMQP values.
+  PN_LIST = 24,
+  /// An AMQP map. A polymorphic container of other AMQP values formed into key/value pairs.
+  PN_MAP = 25,
+  /// A special invalid type value that is returned when no valid types available.
+  PN_INVALID = -1
 }
