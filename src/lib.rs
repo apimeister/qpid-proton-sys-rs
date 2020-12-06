@@ -149,6 +149,9 @@ extern "C" {
   pub fn pn_messenger_get(messenger: *mut pn_messenger_t, message: *mut pn_message_t) -> i32;
   /// Check if a messenger is in blocking mode.
   pub fn pn_messenger_is_blocking(messenger: *mut pn_messenger_t) -> bool;
+  /// Get a tracker for the outgoing message most recently given to pn_messenger_put.
+  /// This tracker may be used with pn_messenger_status to determine the delivery status of the message, as long as the message is still within your outgoing window.
+  pub fn pn_messenger_outgoing_tracker(messenger: *mut pn_messenger_t) -> i64;
   /// Puts a message onto the messenger's outgoing queue.
   /// The message may also be sent if transmission would not cause blocking. This call will not block.
   pub fn pn_messenger_put(messenger: *mut pn_messenger_t, msg: *mut pn_message_t) -> i32;
@@ -172,6 +175,9 @@ extern "C" {
   /// Currently a no-op placeholder.
   /// For future compatibility, do not send or receive messages before starting the messenger.
   pub fn pn_messenger_start(messenger: *mut pn_messenger_t) -> i32;
+  /// Track the status of a delivery.
+  /// Get the current status of the delivery associated with the supplied tracker. This may return PN_STATUS_UNKOWN if the tracker has fallen outside the incoming/outgoing tracking windows of the messenger.
+  pub fn pn_messenger_status(messenger: *mut pn_messenger_t,tracker: i64) -> pn_status_t;
   /// Stops a messenger.
   /// Stopping a messenger will perform an orderly shutdown of all underlying connections. This may require some time. If the messenger is in non blocking mode (see pn_messenger_is_blocking), this operation will return PN_INPROGRESS if it cannot finish immediately. In that case, you can use pn_messenger_stopped() to determine when the messenger has finished stopping.
   pub fn pn_messenger_stop(messenger: *mut pn_messenger_t) -> i32;
@@ -784,4 +790,30 @@ pub enum pn_log_level_t {
   /// Raw protocol bytes
   PN_LEVEL_RAW      = 128,
   PN_LEVEL_ALL      = 65535
+}
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+#[repr(C)]
+/// Describes all the possible states for a message associated with a given tracker.
+pub enum pn_status_t {
+  /// The tracker is unknown.
+  PN_STATUS_UNKNOWN = 0,
+  /// The message is in flight. For outgoing
+  /// messages, use ::pn_messenger_buffered to
+  /// see if it has been sent or not.
+  PN_STATUS_PENDING = 1,
+  /// The message was accepted.
+  PN_STATUS_ACCEPTED = 2,
+  /// The message was rejected.
+  PN_STATUS_REJECTED = 3,
+  /// The message was released.
+  PN_STATUS_RELEASED = 4,
+  /// The message was modified.
+  PN_STATUS_MODIFIED = 5,
+  /// The message was aborted.
+  PN_STATUS_ABORTED = 6,
+  /// The remote party has settled the message.
+  PN_STATUS_SETTLED = 7
 }
