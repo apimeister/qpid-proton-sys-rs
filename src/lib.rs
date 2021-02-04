@@ -24,6 +24,7 @@ extern "C" {
   pub fn pn_data_encode(data: *mut pn_data_t, bytes: *const c_char, size: usize) -> usize;
   pub fn pn_data_enter(data: *mut pn_data_t) -> bool;
   pub fn pn_data_exit(data: *mut pn_data_t) -> bool;
+  pub fn pn_data_get_binary(data: *mut pn_data_t) -> *mut pn_bytes_t;
   /// Puts an empty array value into a pn_data_t.
   /// Elements may be filled by entering the array node and putting the element values. The values must all be of the specified array element type. If an array is described then the first child value of the array is the descriptor and may be of any type.
   pub fn pn_data_put_array(data: *mut pn_data_t, described: bool, param_type: pn_type_t) -> i32;
@@ -32,8 +33,15 @@ extern "C" {
   pub fn pn_data_put_binary(data: *mut pn_data_t,bytes: *mut pn_bytes_t) -> i32;
   /// Puts a PN_CHAR value.
   pub fn pn_data_put_char(data: *mut pn_data_t,c: u32) -> i32;
+  pub fn pn_data_put_described(data: *mut pn_data_t) -> i32;
+  /// Puts a PN_INT value.
   pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i32;
+  /// Puts a PN_LONG value.
+  pub fn pn_data_put_long(data: *mut pn_data_t,l: i64) -> i32;
   pub fn pn_data_put_map(data: *mut pn_data_t) -> i64;
+  pub fn pn_data_put_symbol(data: *mut pn_data_t,symbol: *mut pn_bytes_t) -> i32;
+  /// Puts a PN_UINT value.
+  pub fn pn_data_put_uint(data: *mut pn_data_t, ui: u32)-> i32;
   /// Advances the current node to its next sibling and returns true.
   /// If there is no next sibling the current node remains unchanged and false is returned.
   pub fn pn_data_next(data: *mut pn_data_t) -> bool;
@@ -44,7 +52,7 @@ extern "C" {
   /// Puts a PN_STRING value.
   /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
   pub fn pn_data_put_string(data: *mut pn_data_t,string: *mut pn_bytes_t) -> i64;
-
+  pub fn pn_data_type(data: *mut pn_data_t) -> pn_type_t;
   pub fn pn_delivery(link: *mut pn_link_t,tag: pn_delivery_tag_t) -> *mut pn_delivery_t;
   /// Get the parent link for a delivery object.
   pub fn pn_delivery_link(delivery: *mut pn_delivery_t) -> *mut pn_link_t;
@@ -117,6 +125,7 @@ extern "C" {
   /// Clears the content of a pn_message_t.
   /// When pn_message_clear returns, the supplied pn_message_t will be emptied of all content and effectively returned to the same state as if it was just created.
   pub fn pn_message_clear(msg: *mut pn_message_t);
+  pub fn pn_message_data(msg: *mut pn_message_t,data: *mut pn_data_t) -> i32;
   /// Decode/load message content from AMQP formatted binary data.
   /// Upon invoking this operation, any existing message content will be cleared and replaced with the content from the provided binary data.
   pub fn pn_message_decode(msg: *mut pn_message_t,bytes: *const c_char,size: usize) -> i32;
@@ -140,6 +149,7 @@ extern "C" {
   /// Set the address for a message.
   /// The supplied address pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the address of the message is set to NULL. When the pointer is non NULL, the contents are copied into the message.
   pub fn pn_message_set_address(msg: *mut pn_message_t, address: *const c_char) -> i32;
+  pub fn pn_message_set_content_encoding(msg: *mut pn_message_t,encoding: *const c_char);
   /// Set the content_type for a message.
   /// The supplied content_type pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the content_type is set to NULL. When the pointer is non NULL, the contents are copied into the message.
   pub fn pn_message_set_content_type(msg: *mut pn_message_t, param_type: *const c_char) -> i32;
@@ -216,9 +226,11 @@ extern "C" {
   /// Normally it is most efficient to handle the entire batch in the calling thread and then call pn_proactor_done(), but see pn_proactor_done() for more options.
   /// pn_proactor_get() is a non-blocking version of this call.
   pub fn pn_proactor_wait(proactor: *mut pn_proactor_t) -> *mut pn_event_batch_t;
+
   /// Construct a new receiver on a session.
   /// Each receiving link between two AMQP containers must be uniquely named. Note that this uniqueness cannot be enforced at the API level, so some consideration should be taken in choosing link names.
   pub fn pn_receiver(session: *mut pn_session_t,name: *const c_char) -> *mut pn_link_t;
+  pub fn pn_rwbytes(size: usize, start: *const c_char) -> pn_rwbytes_t;
   /// Construct an Authentication and Security Layer object.
   /// This will return the SASL layer object for the supplied transport object. If there is currently no SASL layer one will be created.
   /// On the client side of an AMQP connection this will have the effect of ensuring that the AMQP SASL layer is used for that connection.
@@ -266,6 +278,7 @@ extern "C" {
   /// By default, SSL will use the hostname associated with the connection that the transport is bound to (see pn_connection_set_hostname). This method allows the caller to override that default.
   /// The hostname is used for two purposes: 1) when set on an SSL client, it is sent to the server during the handshake (if Server Name Indication is supported), and 2) it is used to check against the identifying name provided in the peer's certificate. If the supplied name does not exactly match a SubjectAltName (type DNS name), or the CommonName entry in the peer's certificate, the peer is considered unauthenticated (potential imposter), and the SSL connection is aborted.
   pub fn pn_ssl_set_peer_hostname(ssl: *mut pn_ssl_t,hostname: *const c_char) -> i64;
+  pub fn pn_string_get(str: *mut pn_string_t) -> *const c_char;
   /// Set the address of a terminus object.
   pub fn pn_terminus_set_address(terminus: *mut pn_terminus_t, address: *const c_char) -> i64;
   /// Get additional information about the condition of the transport.
@@ -355,6 +368,9 @@ pub struct pn_ssl_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
 pub struct pn_ssl_domain_t { pub _val: [u8; 0] }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct pn_string_t { pub _val: [u8; 0] }
 #[allow(dead_code)]
 #[repr(C)]
 pub struct pn_subscription_t { pub _val: [u8; 0] }
