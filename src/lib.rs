@@ -20,11 +20,20 @@ extern "C" {
   pub fn pn_connection_set_hostname(connection: *mut pn_connection_t, hostname: *const c_char);
   pub fn pn_connection_set_password(connection: *mut pn_connection_t,password: *const c_char);
   pub fn pn_connection_set_user(connection: *mut pn_connection_t,user: *const c_char);
+  pub fn pn_data_dump(data: *mut pn_data_t);	
+
   /// Writes the contents of a data object to the given buffer as an AMQP data stream.
   pub fn pn_data_encode(data: *mut pn_data_t, bytes: *const c_char, size: usize) -> usize;
   pub fn pn_data_enter(data: *mut pn_data_t) -> bool;
   pub fn pn_data_exit(data: *mut pn_data_t) -> bool;
+  pub fn pn_data_is_described(data: *mut pn_data_t) -> bool;
+  pub fn pn_data_is_null(data: *mut pn_data_t) -> bool;
+
   pub fn pn_data_get_binary(data: *mut pn_data_t) -> *mut pn_bytes_t;
+  pub fn pn_data_get_bytes(data: *mut pn_data_t) -> *mut pn_bytes_t;
+  pub fn pn_data_get_symbol(data: *mut pn_data_t) -> *mut pn_bytes_t;
+
+
   /// Puts an empty array value into a pn_data_t.
   /// Elements may be filled by entering the array node and putting the element values. The values must all be of the specified array element type. If an array is described then the first child value of the array is the descriptor and may be of any type.
   pub fn pn_data_put_array(data: *mut pn_data_t, described: bool, param_type: pn_type_t) -> i32;
