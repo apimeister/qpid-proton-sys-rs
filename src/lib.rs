@@ -2,9 +2,11 @@ use std::os::raw::c_char;
 
 #[allow(dead_code)]
 extern "C" {
+  /// Create a pn_bytes_t.
   pub fn pn_bytes(size: usize,start: *const c_char) -> *mut pn_bytes_t;
-
+  /// Returns the name associated with the exceptional condition, or NULL if there is no conditional information set.
   pub fn pn_condition_get_name(condition: *mut pn_condition_t) -> *const c_char;
+  /// Gets the description associated with the exceptional condition.
   pub fn pn_condition_get_description(condition: *mut pn_condition_t) -> *const c_char;
 
   /// Factory to construct a new Connection.
@@ -17,9 +19,18 @@ extern "C" {
   pub fn pn_connection_open(connection: *mut pn_connection_t);
   /// Set the AMQP Container name advertised by a connection object.
   pub fn pn_connection_set_container(connection: *mut pn_connection_t, container: *const c_char);
+  /// Set the name of the virtual host (either fully qualified or relative) to which this connection is connecting to.
+  /// This information may be used by the remote peer to determine the correct back-end service to connect the client to. This value will be sent in the Open performative, and will be used by SSL and SASL layers to identify the peer.
   pub fn pn_connection_set_hostname(connection: *mut pn_connection_t, hostname: *const c_char);
+  /// Set the authentication password for a client connection.
+  /// It is necessary to set the username and password before binding the connection to a transport and it isn't allowed to change them after the binding.
+  /// Note that the password is write only and has no accessor as the underlying implementation should be zeroing the password after use to avoid the password being present in memory longer than necessary
   pub fn pn_connection_set_password(connection: *mut pn_connection_t,password: *const c_char);
+  /// Set the authentication username for a client connection.
+  /// It is necessary to set the username and password before binding the connection to a transport and it isn't allowed to change them after the binding.
+  /// If not set then no authentication will be negotiated unless the client sasl layer is explicitly created (this would be for something like Kerberos where the credentials are implicit in the environment, or to explicitly use the ANONYMOUS SASL mechanism)
   pub fn pn_connection_set_user(connection: *mut pn_connection_t,user: *const c_char);
+  /// Dumps a debug representation of the internal state of the pn_data_t object that includes its navigational state to stdout for debugging purposes.
   pub fn pn_data_dump(data: *mut pn_data_t);	
 
   /// Writes the contents of a data object to the given buffer as an AMQP data stream.
@@ -29,9 +40,9 @@ extern "C" {
   pub fn pn_data_is_described(data: *mut pn_data_t) -> bool;
   pub fn pn_data_is_null(data: *mut pn_data_t) -> bool;
 
-  pub fn pn_data_get_binary(data: *mut pn_data_t) -> *mut pn_bytes_t;
-  pub fn pn_data_get_bytes(data: *mut pn_data_t) -> *mut pn_bytes_t;
-  pub fn pn_data_get_symbol(data: *mut pn_data_t) -> *mut pn_bytes_t;
+  pub fn pn_data_get_binary(data: *mut pn_data_t) -> pn_bytes_t;
+  pub fn pn_data_get_bytes(data: *mut pn_data_t) -> pn_bytes_t;
+  pub fn pn_data_get_symbol(data: *mut pn_data_t) -> pn_bytes_t;
 
 
   /// Puts an empty array value into a pn_data_t.
@@ -42,12 +53,18 @@ extern "C" {
   pub fn pn_data_put_binary(data: *mut pn_data_t,bytes: *mut pn_bytes_t) -> i32;
   /// Puts a PN_CHAR value.
   pub fn pn_data_put_char(data: *mut pn_data_t,c: u32) -> i32;
+  /// Puts a described value into a pn_data_t object.
+  /// A described node has two children, the descriptor and the value. These are specified by entering the node and putting the desired values.
   pub fn pn_data_put_described(data: *mut pn_data_t) -> i32;
   /// Puts a PN_INT value.
   pub fn pn_data_put_int(data: *mut pn_data_t,i: i32) -> i32;
   /// Puts a PN_LONG value.
   pub fn pn_data_put_long(data: *mut pn_data_t,l: i64) -> i32;
+  /// Puts an empty map value into a pn_data_t.
+  /// Elements may be filled by entering the map node and putting alternating key value pairs.
   pub fn pn_data_put_map(data: *mut pn_data_t) -> i64;
+  /// Puts a PN_SYMBOL value.
+  /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
   pub fn pn_data_put_symbol(data: *mut pn_data_t,symbol: *mut pn_bytes_t) -> i32;
   /// Puts a PN_UINT value.
   pub fn pn_data_put_uint(data: *mut pn_data_t, ui: u32)-> i32;
@@ -61,7 +78,11 @@ extern "C" {
   /// Puts a PN_STRING value.
   /// The bytes referenced by the pn_bytes_t argument are copied and stored inside the pn_data_t object.
   pub fn pn_data_put_string(data: *mut pn_data_t,string: *mut pn_bytes_t) -> i64;
+  /// Access the type of the current node.
+  /// Returns PN_INVALID if there is no current node.
   pub fn pn_data_type(data: *mut pn_data_t) -> pn_type_t;
+  /// Create a delivery on a link.
+  /// Every delivery object within a link must be supplied with a unique tag. Links maintain a sequence of delivery object in the order that they are created.
   pub fn pn_delivery(link: *mut pn_link_t,tag: pn_delivery_tag_t) -> *mut pn_delivery_t;
   /// Get the parent link for a delivery object.
   pub fn pn_delivery_link(delivery: *mut pn_delivery_t) -> *mut pn_link_t;
@@ -76,19 +97,28 @@ extern "C" {
   /// Check if a delivery is readable.
   /// A delivery is considered readable if it is the current delivery on an incoming link.
   pub fn pn_delivery_readable(delivery: *mut pn_delivery_t) -> bool;
+  /// Get the remote disposition state for a delivery.
   pub fn pn_delivery_remote_state(delivery: *mut pn_delivery_t) -> u64;
-
+  /// Construct a delivery tag.
   pub fn pn_dtag(bytes: *const c_char,size: usize) -> pn_delivery_tag_t;
-
+  /// Set the error code and text.
+  /// Makes a copy of text.
   pub fn pn_error_set(error: *mut pn_error_t,code: i64,text: *const c_char) -> i64;
+  /// Get the error text.
+  /// The returned pointer is owned by the pn_error_t.
   pub fn pn_error_text(error: *mut pn_error_t) -> *const c_char;
-
+  /// Remove the next event from the batch and return it.
+  /// NULL means the batch is empty. The returned event pointer is valid until pn_event_batch_next() is called again on the same batch.
   pub fn pn_event_batch_next(batch: *mut pn_event_batch_t)	-> *mut pn_event_t;
+  /// Get the connection associated with an event.
   pub fn pn_event_connection(event: *mut pn_event_t) -> *mut pn_connection_t;
+  /// Get the delivery associated with an event.
   pub fn pn_event_delivery(event: *mut pn_event_t) -> *mut pn_delivery_t;
-
+  /// Get the link associated with an event.
   pub fn pn_event_link(event: *mut pn_event_t) -> *mut pn_link_t;
+  /// Get the session associated with an event.
   pub fn pn_event_session(event: *mut pn_event_t) -> *mut pn_session_t;
+  /// Get the type of an event.
   pub fn pn_event_type(event: *mut pn_event_t) -> pn_event_type_t;
 
 
@@ -128,12 +158,18 @@ extern "C" {
   /// Construct a new pn_message_t.
   /// Every message that is constructed must be freed using pn_message_free().
   pub fn pn_message()	-> *mut pn_message_t;
+  /// Get/set the annotations for a message.
+  /// This operation returns a pointer to a pn_data_t representing the content of the annotations section of a message. The pointer is valid until the message is freed and may be used to both access and modify the content of the annotations section of a message.
+  /// The pn_data_t must either be empty or consist of a symbol keyed map in order to be considered valid message annotations.
+  pub fn pn_message_annotations(msg: *mut pn_message_t) -> *mut pn_data_t;
   /// Get and set the body of a message.
   /// This operation returns a pointer to a pn_data_t representing the body of a message. The pointer is valid until the message is freed and may be used to both access and modify the content of the message body.
   pub fn pn_message_body(msg: *mut pn_message_t) -> *mut pn_data_t;
   /// Clears the content of a pn_message_t.
   /// When pn_message_clear returns, the supplied pn_message_t will be emptied of all content and effectively returned to the same state as if it was just created.
   pub fn pn_message_clear(msg: *mut pn_message_t);
+  /// Save message content into a pn_data_t object data.
+  /// The data object will first be cleared.
   pub fn pn_message_data(msg: *mut pn_message_t,data: *mut pn_data_t) -> i32;
   /// Decode/load message content from AMQP formatted binary data.
   /// Upon invoking this operation, any existing message content will be cleared and replaced with the content from the provided binary data.
@@ -145,9 +181,23 @@ extern "C" {
   pub fn pn_message_error(msg: *mut pn_message_t) -> *mut pn_error_t;
   /// Free a previously constructed pn_message_t.
   pub fn pn_message_free(message: *mut pn_message_t);
+  /// Get the content_type for a message.
+  /// This operation will return NULL if no content_type has been set or if the content_type has been set to NULL. The pointer returned by this operation is valid until any one of the following operations occur:
+  ///   pn_message_free()
+  ///   pn_message_clear()
+  ///   pn_message_set_content_type()
+  pub fn pn_message_get_content_type(msg: *mut pn_message_t) -> *const c_char;
   /// Get/set the id for a message.
   /// The message id provides a globally unique identifier for a message. A message id can be an a string, an unsigned long, a uuid or a binary value. This operation returns a pointer to a pn_data_t that can be used to access and/or modify the value of the message id. The pointer is valid until the message is freed. See pn_data_t for details on how to get/set the value.
   pub fn pn_message_id(msg: *mut pn_message_t) -> *mut pn_data_t;
+  /// Get/set the delivery instructions for a message.
+  /// This operation returns a pointer to a pn_data_t representing the content of the delivery instructions section of a message. The pointer is valid until the message is freed and may be used to both access and modify the content of the delivery instructions section of a message.
+  /// The pn_data_t must either be empty or consist of a symbol keyed map in order to be considered valid delivery instructions.
+  pub fn pn_message_instructions(msg: *mut pn_message_t) -> pn_data_t;
+  /// Get and set the properties for a message.
+  /// This operation returns a pointer to a pn_data_t representing the content of the properties section of a message. The pointer is valid until the message is freed and may be used to both access and modify the content of the properties section of a message.
+  /// The pn_data_t must either be empty or consist of a string keyed map in order to be considered valid message properties.
+  pub fn pn_message_properties(msg: *mut pn_message_t) -> *mut pn_data_t;
   /// Encode and send a message on a sender link.
   /// Performs the following steps:
   /// call pn_message_encode2() to encode the message to a buffer
@@ -158,7 +208,10 @@ extern "C" {
   /// Set the address for a message.
   /// The supplied address pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the address of the message is set to NULL. When the pointer is non NULL, the contents are copied into the message.
   pub fn pn_message_set_address(msg: *mut pn_message_t, address: *const c_char) -> i32;
-  pub fn pn_message_set_content_encoding(msg: *mut pn_message_t,encoding: *const c_char);
+  /// Set the content_encoding for a message.
+  /// The supplied content_encoding pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the content_encoding is set to NULL. When the pointer is non NULL, the contents are copied into the message.
+  /// Returns zero on success or an error code on failure
+  pub fn pn_message_set_content_encoding(msg: *mut pn_message_t,encoding: *const c_char) -> i32;
   /// Set the content_type for a message.
   /// The supplied content_type pointer must either be NULL or reference a NUL terminated string. When the pointer is NULL, the content_type is set to NULL. When the pointer is non NULL, the contents are copied into the message.
   pub fn pn_message_set_content_type(msg: *mut pn_message_t, param_type: *const c_char) -> i32;
@@ -239,6 +292,7 @@ extern "C" {
   /// Construct a new receiver on a session.
   /// Each receiving link between two AMQP containers must be uniquely named. Note that this uniqueness cannot be enforced at the API level, so some consideration should be taken in choosing link names.
   pub fn pn_receiver(session: *mut pn_session_t,name: *const c_char) -> *mut pn_link_t;
+  /// Create a pn_rwbytes_t.
   pub fn pn_rwbytes(size: usize, start: *const c_char) -> pn_rwbytes_t;
   /// Construct an Authentication and Security Layer object.
   /// This will return the SASL layer object for the supplied transport object. If there is currently no SASL layer one will be created.
